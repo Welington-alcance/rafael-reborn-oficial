@@ -21,6 +21,8 @@
       "SUA_KEY"
     );
 
+    const ADMIN_EMAIL = "wferreira765@gmail.com";
+
     async function loadUser() {
       const { data } = await supabaseClient.auth.getUser();
 
@@ -29,11 +31,32 @@
         return;
       }
 
+      const user = data.user;
+
       document.getElementById("email").innerText =
-        "Email: " + data.user.email;
+        "Email: " + user.email;
+
+      // 🔥 VERIFICA OU CRIA USUÁRIO
+      let { data: existingUser } = await supabaseClient
+        .from("users")
+        .select("*")
+        .eq("id", user.id)
+        .single();
+
+      if (!existingUser) {
+        await supabaseClient.from("users").insert({
+          id: user.id,
+          email: user.email,
+          role: user.email === ADMIN_EMAIL ? "admin" : "user"
+        });
+
+        existingUser = {
+          numeros: 0
+        };
+      }
 
       document.getElementById("numeros").innerText =
-        "Números da sorte: 0";
+        "Números da sorte: " + existingUser.numeros;
     }
 
     async function logout() {
