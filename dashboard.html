@@ -10,7 +10,11 @@
 
   <p id="email"></p>
   <p id="numeros"></p>
-  <p id="role"></p>
+
+  <input type="file" id="fileInput">
+  <button onclick="upload()">Enviar Print</button>
+
+  <p id="status"></p>
 
   <button onclick="logout()">Sair</button>
 
@@ -22,7 +26,7 @@
       "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRtanpmbHp2Y21qc3B3anhnbXhrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUyMDcwMDYsImV4cCI6MjA5MDc4MzAwNn0.sAkq1lPi8JoYbadAA5pDJQYsz8FVWM3BLfcpBckvoTo"
     );
 
-    const ADMIN_EMAIL = "wferreira765@gmail.com";
+    let currentUser;
 
     async function loadUser() {
       const { data } = await supabaseClient.auth.getUser();
@@ -32,47 +36,49 @@
         return;
       }
 
-      const user = data.user;
+      currentUser = data.user;
 
       document.getElementById("email").innerText =
-        "Email: " + user.email;
+        "Email: " + currentUser.email;
 
-      // 🔍 BUSCAR USUÁRIO
-      let { data: existingUser, error } = await supabaseClient
+      let { data: userData } = await supabaseClient
         .from("users")
         .select("*")
-        .eq("id", user.id);
-
-      console.log("USER DB:", existingUser);
-
-      // 🧱 SE NÃO EXISTIR → CRIA
-      if (!existingUser || existingUser.length === 0) {
-        await supabaseClient.from("users").insert({
-          id: user.id,
-          email: user.email,
-          numeros: 0,
-          role: user.email === ADMIN_EMAIL ? "admin" : "user"
-        });
-
-        let { data: newUser } = await supabaseClient
-          .from("users")
-          .select("*")
-          .eq("id", user.id);
-
-        existingUser = newUser;
-      }
-
-      const userData = existingUser[0] || {};
-
-      // 🔥 GARANTE QUE SEMPRE TEM VALOR
-      const numeros = userData.numeros ?? 0;
-      const role = userData.role ?? "user";
+        .eq("id", currentUser.id);
 
       document.getElementById("numeros").innerText =
-        "Números da sorte: " + numeros;
+        "Números da sorte: " + (userData[0]?.numeros ?? 0);
+    }
 
-      document.getElementById("role").innerText =
-        "Tipo: " + role;
+    async function upload() {
+      const file = document.getElementById("fileInput").files[0];
+
+      if (!file) {
+        alert("Escolha um arquivo");
+        return;
+      }
+
+      const fileName = Date.now() + "-" + file.name;
+
+      const { data, error } = await supabaseClient.storage
+        .from("prints")
+        .upload(fileName, file);
+
+      if (error) {
+        document.getElementById("status").innerText = "Erro no upload";
+        return;
+      }
+
+      const imageUrl =
+        "https://tmjzflzvcmsjpwixgmxk.supabase.co/storage/v1/object/public/prints/" + fileName;
+
+      await supabaseClient.from("prints").insert({
+        user_id: currentUser.id,
+        image_url: imageUrl
+      });
+
+      document.getElementById("status").innerText =
+        "Print enviado com sucesso!";
     }
 
     async function logout() {
