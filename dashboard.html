@@ -10,11 +10,16 @@
 
   <p id="email"></p>
   <p id="numeros"></p>
+  <p id="tipo"></p>
+
+  <br>
 
   <input type="file" id="fileInput">
   <button onclick="upload()">Enviar Print</button>
 
   <p id="status"></p>
+
+  <br><br>
 
   <button onclick="logout()">Sair</button>
 
@@ -28,6 +33,7 @@
 
     let currentUser;
 
+    // 🔐 carregar usuário
     async function loadUser() {
       const { data } = await supabaseClient.auth.getUser();
 
@@ -41,15 +47,21 @@
       document.getElementById("email").innerText =
         "Email: " + currentUser.email;
 
-      let { data: userData } = await supabaseClient
+      const { data: userData } = await supabaseClient
         .from("users")
         .select("*")
         .eq("id", currentUser.id);
 
+      const user = userData[0];
+
       document.getElementById("numeros").innerText =
-        "Números da sorte: " + (userData[0]?.numeros ?? 0);
+        "Números da sorte: " + (user?.numeros ?? 0);
+
+      document.getElementById("tipo").innerText =
+        "Tipo: " + (user?.role ?? "user");
     }
 
+    // 📸 upload de print
     async function upload() {
       const file = document.getElementById("fileInput").files[0];
 
@@ -60,27 +72,40 @@
 
       const fileName = Date.now() + "-" + file.name;
 
-      const { data, error } = await supabaseClient.storage
+      // upload no storage
+      const { error } = await supabaseClient.storage
         .from("prints")
         .upload(fileName, file);
 
       if (error) {
         document.getElementById("status").innerText = "Erro no upload";
+        console.log(error);
         return;
       }
 
-      const imageUrl =
-        "https://tmjzflzvcmsjpwixgmxk.supabase.co/storage/v1/object/public/prints/" + fileName;
+      // 🔥 pega URL correta
+      const { data: publicUrl } = supabaseClient
+        .storage
+        .from("prints")
+        .getPublicUrl(fileName);
 
+      const imageUrl = publicUrl.publicUrl;
+
+      // salva no banco
       await supabaseClient.from("prints").insert({
         user_id: currentUser.id,
-        image_url: imageUrl
+        image_url: imageUrl,
+        status: "pendente"
       });
 
       document.getElementById("status").innerText =
         "Print enviado com sucesso!";
+
+      // limpa input
+      document.getElementById("fileInput").value = "";
     }
 
+    // 🚪 logout
     async function logout() {
       await supabaseClient.auth.signOut();
       window.location.href = "/";
