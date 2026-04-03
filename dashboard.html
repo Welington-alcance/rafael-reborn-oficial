@@ -43,18 +43,17 @@
         .select("*")
         .eq("id", user.id);
 
+      console.log("USER DB:", existingUser);
+
       // 🧱 SE NÃO EXISTIR → CRIA
       if (!existingUser || existingUser.length === 0) {
-        const { error: insertError } = await supabaseClient
-          .from("users")
-          .insert({
-            id: user.id,
-            email: user.email,
-            numeros: 0,
-            role: user.email === ADMIN_EMAIL ? "admin" : "user"
-          });
+        await supabaseClient.from("users").insert({
+          id: user.id,
+          email: user.email,
+          numeros: 0,
+          role: user.email === ADMIN_EMAIL ? "admin" : "user"
+        });
 
-        // busca novamente após inserir
         let { data: newUser } = await supabaseClient
           .from("users")
           .select("*")
@@ -63,13 +62,17 @@
         existingUser = newUser;
       }
 
-      const userData = existingUser[0];
+      const userData = existingUser[0] || {};
+
+      // 🔥 GARANTE QUE SEMPRE TEM VALOR
+      const numeros = userData.numeros ?? 0;
+      const role = userData.role ?? "user";
 
       document.getElementById("numeros").innerText =
-        "Números da sorte: " + userData.numeros;
+        "Números da sorte: " + numeros;
 
       document.getElementById("role").innerText =
-        "Tipo: " + userData.role;
+        "Tipo: " + role;
     }
 
     async function logout() {
