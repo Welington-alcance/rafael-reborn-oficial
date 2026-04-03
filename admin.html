@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Admin</title>
+</head>
+
+<body style="font-family:sans-serif; text-align:center; margin-top:50px;">
+
+<h1>🧑‍💻 Painel Admin</h1>
+
+<div id="prints"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+
+<script>
+const supabaseClient = window.supabase.createClient(
+  "SUA_URL",
+  "SUA_KEY"
+);
+
+async function loadPrints() {
+  const { data } = await supabaseClient
+    .from("prints")
+    .select("*")
+    .eq("status", "pendente");
+
+  let html = "";
+
+  data.forEach(p => {
+    html += `
+      <div style="margin:20px;">
+        <img src="${p.image_url}" width="200"><br><br>
+        <button onclick="aprovar('${p.id}', '${p.user_id}')">
+          Aprovar
+        </button>
+      </div>
+    `;
+  });
+
+  document.getElementById("prints").innerHTML = html;
+}
+
+async function aprovar(printId, userId) {
+
+  // marca print como aprovado
+  await supabaseClient
+    .from("prints")
+    .update({ status: "aprovado" })
+    .eq("id", printId);
+
+  // soma +1 no usuário
+  const { data } = await supabaseClient
+    .from("users")
+    .select("*")
+    .eq("id", userId);
+
+  const atual = data[0].numeros;
+
+  await supabaseClient
+    .from("users")
+    .update({ numeros: atual + 1 })
+    .eq("id", userId);
+
+  alert("Aprovado e número gerado!");
+
+  loadPrints();
+}
+
+loadPrints();
+</script>
+
+</body>
+</html>
