@@ -20,6 +20,16 @@
       "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRtanpmbHp2Y21qc3B3anhnbXhrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUyMDcwMDYsImV4cCI6MjA5MDc4MzAwNn0.sAkq1lPi8JoYbadAA5pDJQYsz8FVWM3BLfcpBckvoTo"
     );
 
+    async function checkUser() {
+      const { data } = await supabaseClient.auth.getUser();
+
+      if (data.user) {
+        window.location.href = "/dashboard.html";
+      }
+    }
+
+    checkUser();
+
     document.getElementById("loginBtn").addEventListener("click", async () => {
       await supabaseClient.auth.signInWithOAuth({
         provider: "google"
