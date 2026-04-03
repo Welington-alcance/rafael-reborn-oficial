@@ -1,12 +1,14 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Admin</title>
+  <title>Painel Admin</title>
 </head>
 
 <body style="font-family:sans-serif; text-align:center; margin-top:50px;">
 
 <h1>🧑‍💻 Painel Admin</h1>
+
+<p id="info"></p>
 
 <div id="prints"></div>
 
@@ -14,25 +16,83 @@
 
 <script>
 const supabaseClient = window.supabase.createClient(
-  "SUA_URL",
-  "SUA_KEY"
+  "https://tmjzflzvcmjspwjxgmxk.supabase.co",
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRtanpmbHp2Y21qc3B3anhnbXhrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUyMDcwMDYsImV4cCI6MjA5MDc4MzAwNn0.sAkq1lPi8JoYbadAA5pDJQYsz8FVWM3BLfcpBckvoTo"
 );
 
-async function loadPrints() {
-  const { data } = await supabaseClient
-    .from("prints")
+let currentUser;
+
+// 🔐 Verifica login e se é admin
+async function checkUser() {
+  const { data } = await supabaseClient.auth.getUser();
+
+  if (!data.user) {
+    window.location.href = "/";
+    return;
+  }
+
+  currentUser = data.user;
+
+  // busca dados no banco
+  const { data: userData } = await supabaseClient
+    .from("users")
     .select("*")
-    .eq("status", "pendente");
+    .eq("id", currentUser.id);
+
+  const user = userData[0];
+
+  document.getElementById("info").innerText =
+    "Logado como: " + user.email + " (" + user.role + ")";
+
+  // 🚨 só admin entra
+  if (user.role !== "admin") {
+    alert("Acesso negado");
+    window.location.href = "/dashboard.html";
+    return;
+  }
+
+  loadPrints();
+}
+
+// 📸 carregar prints
+async function loadPrints() {
+
+  const { data, error } = await supabaseClient
+    .from("prints")
+    .select("*");
+
+  console.log("DATA:", data);
+  console.log("ERROR:", error);
+
+  if (error) {
+    document.getElementById("prints").innerText = "Erro ao carregar prints";
+    return;
+  }
+
+  if (!data || data.length === 0) {
+    document.getElementById("prints").innerHTML = "Nenhum print encontrado";
+    return;
+  }
 
   let html = "";
 
   data.forEach(p => {
+
     html += `
-      <div style="margin:20px;">
+      <div style="margin:30px; border:1px solid #ccc; padding:15px;">
+        
         <img src="${p.image_url}" width="200"><br><br>
-        <button onclick="aprovar('${p.id}', '${p.user_id}')">
-          Aprovar
-        </button>
+
+        <p>Status: ${p.status}</p>
+
+        ${
+          p.status === "pendente"
+          ? `<button onclick="aprovar('${p.id}', '${p.user_id}')">
+              Aprovar
+            </button>`
+          : `<b>Já aprovado</b>`
+        }
+
       </div>
     `;
   });
@@ -40,33 +100,35 @@ async function loadPrints() {
   document.getElementById("prints").innerHTML = html;
 }
 
+// ✅ Aprovar print + gerar número
 async function aprovar(printId, userId) {
 
-  // marca print como aprovado
+  // atualiza print
   await supabaseClient
     .from("prints")
     .update({ status: "aprovado" })
     .eq("id", printId);
 
-  // soma +1 no usuário
+  // busca usuário
   const { data } = await supabaseClient
     .from("users")
     .select("*")
     .eq("id", userId);
 
-  const atual = data[0].numeros;
+  const atual = data[0].numeros || 0;
 
+  // soma número
   await supabaseClient
     .from("users")
     .update({ numeros: atual + 1 })
     .eq("id", userId);
 
-  alert("Aprovado e número gerado!");
+  alert("Print aprovado + número gerado!");
 
   loadPrints();
 }
 
-loadPrints();
+checkUser();
 </script>
 
 </body>
