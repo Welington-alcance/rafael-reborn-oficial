@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Painel</title>
+</head>
+
+<body style="font-family:sans-serif; text-align:center; margin-top:50px;">
+
+  <h1>📊 Seu Painel</h1>
+
+  <p id="email"></p>
+  <p id="numeros"></p>
+
+  <button onclick="logout()">Sair</button>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+
+  <script>
+    const supabaseClient = window.supabase.createClient(
+      "SUA_URL",
+      "SUA_KEY"
+    );
+
+    async function loadUser() {
+      const { data } = await supabaseClient.auth.getUser();
+
+      if (!data.user) {
+        window.location.href = "/";
+        return;
+      }
+
+      document.getElementById("email").innerText =
+        "Email: " + data.user.email;
+
+      document.getElementById("numeros").innerText =
+        "Números da sorte: 0";
+    }
+
+    async function logout() {
+      await supabaseClient.auth.signOut();
+      window.location.href = "/";
+    }
+
+    loadUser();
+  </script>
+
+</body>
+</html>
